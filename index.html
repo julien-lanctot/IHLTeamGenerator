@@ -20,12 +20,14 @@
         .container {
             max-width: 800px;
             margin: 0 auto;
+            width: 100%;
         }
 
         h1 {
             text-align: center;
             margin-bottom: 30px;
             color: #333;
+            font-size: 28px;
         }
 
         .controls {
@@ -148,17 +150,96 @@
             opacity: 1;
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 24px;
+                margin-bottom: 20px;
+            }
+
+            .controls {
+                gap: 8px;
+                margin-bottom: 20px;
+            }
+
+            button {
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+
             #teams-display {
                 flex-direction: column;
             }
 
+            .team {
+                padding: 20px 15px;
+                min-height: auto;
+            }
+
             .team h2 {
                 font-size: 28px;
+                margin-bottom: 15px;
             }
 
             .player {
-                font-size: 22px;
+                font-size: 20px;
+                margin-bottom: 8px;
+                padding: 4px;
+            }
+
+            .goalie {
+                margin-top: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 8px;
+            }
+
+            h1 {
+                font-size: 20px;
+                margin-bottom: 15px;
+            }
+
+            .controls {
+                gap: 6px;
+                margin-bottom: 15px;
+            }
+
+            button {
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+
+            .team {
+                padding: 15px 10px;
+            }
+
+            .team h2 {
+                font-size: 24px;
+                margin-bottom: 12px;
+            }
+
+            .player {
+                font-size: 18px;
+                margin-bottom: 6px;
+                padding: 3px;
+            }
+
+            .goalie {
+                margin-top: 12px;
+            }
+
+            .notification {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                padding: 12px 15px;
+                font-size: 14px;
             }
         }
     </style>
