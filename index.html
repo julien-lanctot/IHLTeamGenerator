@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IHL Team Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-randomize {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .btn-randomize:hover {
+            background-color: #45a049;
+        }
+
+        .btn-reset {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        .btn-reset:hover {
+            background-color: #0b7dda;
+        }
+
+        .btn-screenshot {
+            background-color: #FF9800;
+            color: white;
+        }
+
+        .btn-screenshot:hover {
+            background-color: #e68900;
+        }
+
+        #teams-display {
+            display: flex;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .team {
+            flex: 1;
+            padding: 30px;
+            min-height: 400px;
+        }
+
+        .team-white {
+            background-color: white;
+            color: black;
+        }
+
+        .team-black {
+            background-color: black;
+            color: white;
+        }
+
+        .team h2 {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-decoration: underline;
+        }
+
+        .player {
+            font-size: 28px;
+            margin-bottom: 10px;
+            padding: 5px;
+            border: 2px solid transparent;
+            border-radius: 3px;
+            cursor: text;
+        }
+
+        .player:hover {
+            border-color: #666;
+        }
+
+        .player[contenteditable="true"]:focus {
+            outline: none;
+            border-color: #4CAF50;
+            background-color: rgba(76, 175, 80, 0.1);
+        }
+
+        .team-black .player[contenteditable="true"]:focus {
+            background-color: rgba(76, 175, 80, 0.2);
+        }
+
+        .goalie {
+            margin-top: 20px;
+            font-weight: normal;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+
+        .notification.show {
+            opacity: 1;
+        }
+
+        @media (max-width: 600px) {
+            #teams-display {
+                flex-direction: column;
+            }
+
+            .team h2 {
+                font-size: 28px;
+            }
+
+            .player {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>IHL Team Generator</h1>
+
+        <div class="controls">
+            <button class="btn-randomize" onclick="randomizeTeams()">Randomize Teams</button>
+            <button class="btn-reset" onclick="resetToDefault()">Reset to Default</button>
+            <button class="btn-screenshot" onclick="captureScreenshot()">Copy Screenshot</button>
+        </div>
+
+        <div id="teams-display">
+            <div class="team team-white">
+                <h2>White</h2>
+                <div id="white-players"></div>
+            </div>
+            <div class="team team-black">
+                <h2>Black</h2>
+                <div id="black-players"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        // Default team data
+        const defaultTeams = {
+            white: {
+                players: ['Tom', 'Derek', 'Al', 'Robert', 'Joe', 'LP'],
+                goalie: 'Chris'
+            },
+            black: {
+                players: ['Peter', 'Yero', 'Emile', 'Jon', 'Rolland', 'Stephan'],
+                goalie: 'Julien'
+            }
+        };
+
+        // Current teams data
+        let currentTeams = JSON.parse(JSON.stringify(defaultTeams));
+
+        // Initialize the display
+        function init() {
+            displayTeams();
+        }
+
+        // Display teams
+        function displayTeams() {
+            const whitePlayersDiv = document.getElementById('white-players');
+            const blackPlayersDiv = document.getElementById('black-players');
+
+            // Clear previous content
+            whitePlayersDiv.innerHTML = '';
+            blackPlayersDiv.innerHTML = '';
+
+            // Display white team players
+            currentTeams.white.players.forEach((player, index) => {
+                const playerDiv = createPlayerDiv(player, 'white', index);
+                whitePlayersDiv.appendChild(playerDiv);
+            });
+
+            // Display white team goalie
+            const whiteGoalieDiv = createGoalieDiv(currentTeams.white.goalie, 'white');
+            whitePlayersDiv.appendChild(whiteGoalieDiv);
+
+            // Display black team players
+            currentTeams.black.players.forEach((player, index) => {
+                const playerDiv = createPlayerDiv(player, 'black', index);
+                blackPlayersDiv.appendChild(playerDiv);
+            });
+
+            // Display black team goalie
+            const blackGoalieDiv = createGoalieDiv(currentTeams.black.goalie, 'black');
+            blackPlayersDiv.appendChild(blackGoalieDiv);
+        }
+
+        // Create player div
+        function createPlayerDiv(playerName, team, index) {
+            const div = document.createElement('div');
+            div.className = 'player';
+            div.textContent = playerName;
+            div.contentEditable = true;
+            div.addEventListener('blur', function() {
+                currentTeams[team].players[index] = this.textContent.trim();
+            });
+            div.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.blur();
+                }
+            });
+            return div;
+        }
+
+        // Create goalie div
+        function createGoalieDiv(goalieName, team) {
+            const div = document.createElement('div');
+            div.className = 'player goalie';
+            div.innerHTML = `G: <span class="goalie-name" contenteditable="true">${goalieName}</span>`;
+
+            const nameSpan = div.querySelector('.goalie-name');
+            nameSpan.addEventListener('blur', function() {
+                currentTeams[team].goalie = this.textContent.trim();
+            });
+            nameSpan.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.blur();
+                }
+            });
+
+            return div;
+        }
+
+        // Randomize teams
+        function randomizeTeams() {
+            // Collect all players (not goalies)
+            const allPlayers = [
+                ...currentTeams.white.players,
+                ...currentTeams.black.players
+            ];
+
+            // Shuffle the players
+            const shuffled = shuffleArray([...allPlayers]);
+
+            // Split into two teams
+            const midpoint = Math.ceil(shuffled.length / 2);
+            currentTeams.white.players = shuffled.slice(0, midpoint);
+            currentTeams.black.players = shuffled.slice(midpoint);
+
+            // Goalies stay the same (never on the same team)
+            displayTeams();
+            showNotification('Teams randomized!');
+        }
+
+        // Shuffle array using Fisher-Yates algorithm
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Reset to default teams
+        function resetToDefault() {
+            currentTeams = JSON.parse(JSON.stringify(defaultTeams));
+            displayTeams();
+            showNotification('Teams reset to default!');
+        }
+
+        // Capture screenshot and copy to clipboard
+        async function captureScreenshot() {
+            const teamsDisplay = document.getElementById('teams-display');
+
+            try {
+                // Use html2canvas to capture the teams display
+                const canvas = await html2canvas(teamsDisplay, {
+                    backgroundColor: null,
+                    scale: 2, // Higher quality
+                    logging: false
+                });
+
+                // Convert canvas to blob
+                canvas.toBlob(async (blob) => {
+                    try {
+                        // Copy to clipboard
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                'image/png': blob
+                            })
+                        ]);
+                        showNotification('Screenshot copied to clipboard!');
+                    } catch (err) {
+                        console.error('Failed to copy to clipboard:', err);
+                        // Fallback: download the image
+                        const url = canvas.toDataURL('image/png');
+                        const link = document.createElement('a');
+                        link.download = 'hockey-teams.png';
+                        link.href = url;
+                        link.click();
+                        showNotification('Screenshot downloaded! (Clipboard not supported)');
+                    }
+                });
+            } catch (err) {
+                console.error('Failed to capture screenshot:', err);
+                showNotification('Failed to capture screenshot', true);
+            }
+        }
+
+        // Show notification
+        function showNotification(message, isError = false) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.backgroundColor = isError ? '#f44336' : '#4CAF50';
+            notification.classList.add('show');
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
