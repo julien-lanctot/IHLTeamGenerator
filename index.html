@@ -74,6 +74,15 @@
             background-color: #e68900;
         }
 
+        .btn-whatsapp {
+            background-color: #25D366;
+            color: white;
+        }
+
+        .btn-whatsapp:hover {
+            background-color: #1da851;
+        }
+
         #teams-display {
             display: flex;
             border-radius: 8px;
@@ -130,6 +139,43 @@
         .goalie {
             margin-top: 20px;
             font-weight: normal;
+        }
+
+        .player-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .player-container .player {
+            flex: 1;
+        }
+
+        .lock-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            font-size: 18px;
+            opacity: 0.4;
+            transition: opacity 0.2s;
+        }
+
+        .lock-btn:hover {
+            opacity: 0.8;
+        }
+
+        .lock-btn.locked {
+            opacity: 1;
+        }
+
+        .player.locked {
+            background-color: rgba(255, 193, 7, 0.2);
+            border-color: #FFC107;
+        }
+
+        .team-black .player.locked {
+            background-color: rgba(255, 193, 7, 0.3);
         }
 
         .notification {
@@ -190,6 +236,15 @@
                 margin-top: 8px;
             }
 
+            .lock-btn {
+                font-size: 14px;
+                padding: 2px;
+            }
+
+            .player-container {
+                gap: 4px;
+            }
+
             .notification {
                 bottom: 10px;
                 right: 10px;
@@ -237,6 +292,15 @@
             .goalie {
                 margin-top: 6px;
             }
+
+            .lock-btn {
+                font-size: 12px;
+                padding: 1px;
+            }
+
+            .player-container {
+                gap: 3px;
+            }
         }
     </style>
 </head>
@@ -248,6 +312,7 @@
             <button class="btn-randomize" onclick="randomizeTeams()">Randomize Teams</button>
             <button class="btn-reset" onclick="resetToDefault()">Reset to Default</button>
             <button class="btn-screenshot" onclick="captureScreenshot()">Copy Screenshot</button>
+            <button class="btn-whatsapp" onclick="shareToWhatsApp()">Share to WhatsApp</button>
         </div>
 
         <div id="teams-display">
@@ -280,6 +345,12 @@
 
         // Current teams data
         let currentTeams = JSON.parse(JSON.stringify(defaultTeams));
+
+        // Track locked players: { white: [false, false, ...], black: [false, false, ...] }
+        let lockedPlayers = {
+            white: new Array(defaultTeams.white.players.length).fill(false),
+            black: new Array(defaultTeams.black.players.length).fill(false)
+        };
 
         // Initialize the display
         function init() {
@@ -316,10 +387,13 @@
             blackPlayersDiv.appendChild(blackGoalieDiv);
         }
 
-        // Create player div
+        // Create player div with lock button
         function createPlayerDiv(playerName, team, index) {
+            const container = document.createElement('div');
+            container.className = 'player-container';
+
             const div = document.createElement('div');
-            div.className = 'player';
+            div.className = 'player' + (lockedPlayers[team][index] ? ' locked' : '');
             div.textContent = playerName;
             div.contentEditable = true;
             div.addEventListener('blur', function() {
@@ -331,7 +405,22 @@
                     this.blur();
                 }
             });
-            return div;
+
+            const lockBtn = document.createElement('button');
+            lockBtn.className = 'lock-btn' + (lockedPlayers[team][index] ? ' locked' : '');
+            lockBtn.textContent = lockedPlayers[team][index] ? '🔒' : '🔓';
+            lockBtn.title = lockedPlayers[team][index] ? 'Unlock player' : 'Lock player to this team';
+            lockBtn.addEventListener('click', function() {
+                lockedPlayers[team][index] = !lockedPlayers[team][index];
+                this.textContent = lockedPlayers[team][index] ? '🔒' : '🔓';
+                this.title = lockedPlayers[team][index] ? 'Unlock player' : 'Lock player to this team';
+                this.classList.toggle('locked', lockedPlayers[team][index]);
+                div.classList.toggle('locked', lockedPlayers[team][index]);
+            });
+
+            container.appendChild(div);
+            container.appendChild(lockBtn);
+            return container;
         }
 
         // Create goalie div
@@ -356,19 +445,75 @@
 
         // Randomize teams
         function randomizeTeams() {
-            // Collect all players (not goalies)
-            const allPlayers = [
-                ...currentTeams.white.players,
-                ...currentTeams.black.players
-            ];
+            // Collect locked players with their positions
+            const lockedWhite = [];
+            const lockedBlack = [];
+            const unlockedPlayers = [];
 
-            // Shuffle the players
-            const shuffled = shuffleArray([...allPlayers]);
+            currentTeams.white.players.forEach((player, index) => {
+                if (lockedPlayers.white[index]) {
+                    lockedWhite.push({ player, index });
+                } else {
+                    unlockedPlayers.push(player);
+                }
+            });
 
-            // Split into two teams
-            const midpoint = Math.ceil(shuffled.length / 2);
-            currentTeams.white.players = shuffled.slice(0, midpoint);
-            currentTeams.black.players = shuffled.slice(midpoint);
+            currentTeams.black.players.forEach((player, index) => {
+                if (lockedPlayers.black[index]) {
+                    lockedBlack.push({ player, index });
+                } else {
+                    unlockedPlayers.push(player);
+                }
+            });
+
+            // Shuffle only the unlocked players
+            const shuffled = shuffleArray([...unlockedPlayers]);
+
+            // Calculate how many unlocked slots each team has
+            const whiteTeamSize = currentTeams.white.players.length;
+            const blackTeamSize = currentTeams.black.players.length;
+            const whiteUnlockedSlots = whiteTeamSize - lockedWhite.length;
+            const blackUnlockedSlots = blackTeamSize - lockedBlack.length;
+
+            // Split shuffled players for unlocked slots
+            const shuffledForWhite = shuffled.slice(0, whiteUnlockedSlots);
+            const shuffledForBlack = shuffled.slice(whiteUnlockedSlots, whiteUnlockedSlots + blackUnlockedSlots);
+
+            // Build new teams
+            const newWhitePlayers = new Array(whiteTeamSize);
+            const newBlackPlayers = new Array(blackTeamSize);
+            const newWhiteLocks = new Array(whiteTeamSize).fill(false);
+            const newBlackLocks = new Array(blackTeamSize).fill(false);
+
+            // Place locked players in their positions
+            lockedWhite.forEach(({ player, index }) => {
+                newWhitePlayers[index] = player;
+                newWhiteLocks[index] = true;
+            });
+            lockedBlack.forEach(({ player, index }) => {
+                newBlackPlayers[index] = player;
+                newBlackLocks[index] = true;
+            });
+
+            // Fill in unlocked slots with shuffled players
+            let shuffledWhiteIndex = 0;
+            let shuffledBlackIndex = 0;
+            for (let i = 0; i < whiteTeamSize; i++) {
+                if (newWhitePlayers[i] === undefined) {
+                    newWhitePlayers[i] = shuffledForWhite[shuffledWhiteIndex++];
+                }
+            }
+            for (let i = 0; i < blackTeamSize; i++) {
+                if (newBlackPlayers[i] === undefined) {
+                    newBlackPlayers[i] = shuffledForBlack[shuffledBlackIndex++];
+                }
+            }
+
+            // Update teams and lock states
+            currentTeams.white.players = newWhitePlayers;
+            currentTeams.black.players = newBlackPlayers;
+            lockedPlayers.white = newWhiteLocks;
+            lockedPlayers.black = newBlackLocks;
 
             // Goalies stay the same (never on the same team)
             displayTeams();
@@ -387,6 +532,11 @@
         // Reset to default teams
         function resetToDefault() {
             currentTeams = JSON.parse(JSON.stringify(defaultTeams));
+            // Clear all locks
+            lockedPlayers = {
+                white: new Array(defaultTeams.white.players.length).fill(false),
+                black: new Array(defaultTeams.black.players.length).fill(false)
+            };
             displayTeams();
             showNotification('Teams reset to default!');
         }
@@ -424,6 +574,53 @@
                         showNotification('Screenshot downloaded! (Clipboard not supported)');
                     }
                 });
+            } catch (err) {
+                console.error('Failed to capture screenshot:', err);
+                showNotification('Failed to capture screenshot', true);
+            }
+        }
+
+        // Share to WhatsApp using Web Share API
+        async function shareToWhatsApp() {
+            const teamsDisplay = document.getElementById('teams-display');
+
+            try {
+                // Use html2canvas to capture the teams display
+                const canvas = await html2canvas(teamsDisplay, {
+                    backgroundColor: null,
+                    scale: 2,
+                    logging: false
+                });
+
+                // Convert canvas to blob
+                canvas.toBlob(async (blob) => {
+                    const file = new File([blob], 'hockey-teams.png', { type: 'image/png' });
+
+                    // Check if Web Share API with files is supported
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        try {
+                            await navigator.share({
+                                files: [file],
+                                title: 'IHL Teams',
+                                text: 'Tonight\'s hockey teams!'
+                            });
+                            showNotification('Shared successfully!');
+                        } catch (err) {
+                            if (err.name !== 'AbortError') {
+                                console.error('Share failed:', err);
+                                showNotification('Share cancelled or failed', true);
+                            }
+                        }
+                    } else {
+                        // Fallback: Open WhatsApp with text only
+                        const whiteTeam = currentTeams.white.players.join(', ') + ' (G: ' + currentTeams.white.goalie + ')';
+                        const blackTeam = currentTeams.black.players.join(', ') + ' (G: ' + currentTeams.black.goalie + ')';
+                        const text = `IHL Teams\n\nWhite: ${whiteTeam}\n\nBlack: ${blackTeam}`;
+                        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                        window.open(whatsappUrl, '_blank');
+                        showNotification('Opening WhatsApp... (image sharing not supported on this device)');
+                    }
+                }, 'image/png');
             } catch (err) {
                 console.error('Failed to capture screenshot:', err);
                 showNotification('Failed to capture screenshot', true);
